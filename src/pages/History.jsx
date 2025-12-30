@@ -12,7 +12,9 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
-import { Calendar, ArrowUpRight, ArrowDownRight, Zap, Car, Loader } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '../components/ui/Button';
+import { Calendar, ArrowUpRight, ArrowDownRight, Zap, Car, Loader, Leaf } from 'lucide-react';
 
 ChartJS.register(
     CategoryScale,
@@ -144,27 +146,43 @@ const History = () => {
             <div className="space-y-6 pt-8">
                 <h3 className="text-2xl font-bold text-gray-900">Past Records</h3>
                 <div className="grid gap-4">
-                    {history.slice().reverse().map((record, index) => (
-                        <Card key={record.id} className="flex flex-col md:flex-row justify-between items-center gap-6 hover:shadow-md transition-shadow duration-200 border-l-4 border-l-primary-500">
-                            <div className="flex items-center gap-6 w-full md:w-auto">
-                                <div className="bg-gray-100 p-4 rounded-full">
-                                    <Calendar className="w-6 h-6 text-gray-600" />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-gray-900 text-lg">{record.date}</p>
-                                    <div className="flex gap-4 mt-1 text-sm text-gray-500">
-                                        <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> {Math.round(record.breakdown.electricity)}</span>
-                                        <span className="flex items-center gap-1"><Car className="w-3 h-3" /> {Math.round(record.breakdown.transport)}</span>
-                                    </div>
+                    {history.length === 0 ? (
+                        <Card className="text-center py-12 bg-gray-50 border-dashed border-2 border-gray-200">
+                            <div className="flex justify-center mb-4">
+                                <div className="p-3 bg-white rounded-full shadow-sm">
+                                    <Leaf className="w-8 h-8 text-gray-400" />
                                 </div>
                             </div>
-
-                            <div className="text-right w-full md:w-auto bg-gray-50 px-6 py-3 rounded-lg">
-                                <p className="text-2xl font-bold text-gray-900">{record.total.toLocaleString()}</p>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">kg CO₂ / year</p>
+                            <h3 className="text-lg font-medium text-gray-900">No records yet</h3>
+                            <p className="mt-1 text-gray-500">Start calculating your carbon footprint to see your history here.</p>
+                            <div className="mt-6">
+                                <Link to="/calculator">
+                                    <Button>Calculate Now</Button>
+                                </Link>
                             </div>
                         </Card>
-                    ))}
+                    ) : (
+                        history.slice().reverse().map((record, index) => (
+                            <Card key={record.id} className="flex flex-col md:flex-row justify-between items-center gap-6 hover:shadow-md transition-shadow duration-200 border-l-4 border-l-primary-500 group">
+                                <div className="flex items-center gap-6 w-full md:w-auto">
+                                    <div className="bg-primary-50 p-4 rounded-full group-hover:bg-primary-100 transition-colors">
+                                        <Calendar className="w-6 h-6 text-primary-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-900 text-lg">{new Date(record.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                        <div className="flex gap-4 mt-1 text-sm text-gray-500">
+                                            <span className="flex items-center gap-1" title="Electricity"><Zap className="w-3 h-3" /> {Math.round(record.breakdown.electricity)}</span>
+                                            <span className="flex items-center gap-1" title="Transport"><Car className="w-3 h-3" /> {Math.round(record.breakdown.transport)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="text-right w-full md:w-auto bg-gray-50 px-6 py-3 rounded-lg group-hover:bg-white transition-colors border border-transparent group-hover:border-gray-100">
+                                    <p className="text-2xl font-bold text-gray-900">{record.total.toLocaleString()}</p>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">kg CO₂ / year</p>
+                                </div>
+                            </Card>
+                        )))}
                 </div>
             </div>
         </div>

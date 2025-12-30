@@ -3,8 +3,12 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Card } from '../components/ui/Card';
-import { Zap, Car, Utensils, ShoppingBag, ChevronRight, ChevronLeft, CheckCircle, TrendingUp, TrendingDown, Lightbulb } from 'lucide-react';
+import { Zap, Car, Utensils, ShoppingBag, ChevronRight, ChevronLeft, CheckCircle, TrendingUp, TrendingDown, Lightbulb, Target, Award } from 'lucide-react';
 import { footprintApi } from '../api/footprintApi';
+import { WhatIfSimulator } from '../components/WhatIfSimulator';
+import { CalculationExplainer } from '../components/CalculationExplainer';
+import { BENCHMARKS, getImpactLevel, IMPACT_LEVELS } from '../constants/benchmarks';
+import { Pie } from 'react-chartjs-2';
 
 const Calculator = () => {
     // const { history, addToHistory } = useAuth(); // Removed as per refactor
@@ -112,64 +116,126 @@ const Calculator = () => {
         };
     };
 
-    const generateRecommendations = (breakdown) => {
+    const generateRecommendations = (breakdown, formData) => {
         const recommendations = [];
+        const { SAVINGS_ESTIMATES } = require('../constants/benchmarks');
 
-        // Energy
-        if (breakdown.electricity > 1000) {
+        // Sort categories by contribution
+        const categories = [
+            { name: 'electricity', value: breakdown.electricity },
+            { name: 'transport', value: breakdown.transport },
+            { name: 'diet', value: breakdown.diet },
+            { name: 'lifestyle', value: breakdown.lifestyle },
+        ].sort((a, b) => b.value - a.value);
+
+        // Energy recommendations
+        if (breakdown.electricity > 800) {
+            if (formData.acUsage === 'Regular') {
+                recommendations.push({
+                    category: 'Energy',
+                    text: 'Reduce AC usage by setting temperature to 24-26°C and using fans alongside AC.',
+                    savings: SAVINGS_ESTIMATES.REDUCE_AC_USAGE,
+                    difficulty: 'Easy',
+                    icon: Zap
+                });
+            }
             recommendations.push({
                 category: 'Energy',
-                text: 'Switch to LED bulbs and energy-efficient appliances to reduce electricity consumption.',
+                text: 'Replace all bulbs with LED lights and unplug devices when not in use.',
+                savings: SAVINGS_ESTIMATES.SWITCH_TO_LED,
+                difficulty: 'Easy',
                 icon: Zap
             });
         }
 
-        // Transport
-        if (breakdown.transport > 1200) {
-            recommendations.push({
-                category: 'Transport',
-                text: 'Consider carpooling, using public transport, or cycling for short distances.',
-                icon: Car
-            });
+        // Transport recommendations
+        if (breakdown.transport > 1000) {
+            if (formData.transportMode === 'Petrol car' || formData.transportMode === 'Diesel car') {
+                recommendations.push({
+                    category: 'Transport',
+                    text: 'Switch to public transport or metro for daily commute.',
+                    savings: SAVINGS_ESTIMATES.PUBLIC_TRANSPORT,
+                    difficulty: 'Medium',
+                    icon: Car
+                });
+                recommendations.push({
+                    category: 'Transport',
+                    text: 'Carpool with colleagues or neighbors at least once a week.',
+                    savings: SAVINGS_ESTIMATES.CARPOOL_ONCE_WEEK,
+                    difficulty: 'Easy',
+                    icon: Car
+                });
+            } else if (formData.transportMode === 'Bike') {
+                recommendations.push({
+                    category: 'Transport',
+                    text: 'Use bicycle or walk for trips under 3 km.',
+                    savings: SAVINGS_ESTIMATES.BIKE_SHORT_TRIPS,
+                    difficulty: 'Medium',
+                    icon: Car
+                });
+            }
         }
 
-        // Diet
-        if (breakdown.diet > 1500) {
+        // Diet recommendations
+        if (breakdown.diet > 1400 && ['Mixed', 'Heavy non-veg'].includes(formData.dietType)) {
             recommendations.push({
                 category: 'Diet',
-                text: 'Try participating in "Meatless Mondays" or incorporating more plant-based meals.',
+                text: 'Try "Meatless Mondays" - go vegetarian one day per week.',
+                savings: SAVINGS_ESTIMATES.MEATLESS_MONDAY,
+                difficulty: 'Easy',
                 icon: Utensils
             });
         }
 
-        // Lifestyle
-        if (breakdown.lifestyle > 800) {
-            recommendations.push({
-                category: 'Lifestyle',
-                text: 'Reduce shopping frequency and practice the 3Rs: Reduce, Reuse, Recycle.',
-                icon: ShoppingBag
-            });
+        // Lifestyle recommendations
+        if (breakdown.lifestyle > 600) {
+            if (formData.shoppingFrequency === 'Frequently') {
+                recommendations.push({
+                    category: 'Lifestyle',
+                    text: 'Buy only what you need and choose quality over quantity.',
+                    savings: SAVINGS_ESTIMATES.REDUCE_SHOPPING,
+                    difficulty: 'Medium',
+                    icon: ShoppingBag
+                });
+            }
+            if (formData.wasteSegregation !== 'Yes') {
+                recommendations.push({
+                    category: 'Lifestyle',
+                    text: 'Start segregating waste into wet, dry, and recyclables.',
+                    savings: SAVINGS_ESTIMATES.WASTE_SEGREGATION,
+                    difficulty: 'Easy',
+                    icon: ShoppingBag
+                });
+            }
         }
 
-        // Fallback
+        // Ensure we have at least 3-5 recommendations, prioritize highest impact
         if (recommendations.length === 0) {
             recommendations.push({
                 category: 'General',
-                text: 'Great job! Keep maintaining your eco-friendly habits.',
+                text: 'Excellent! Keep maintaining your eco-friendly lifestyle.',
+                savings: 0,
+                difficulty: 'Easy',
                 icon: Lightbulb
             });
         }
 
-        return recommendations;
+        // Sort by savings (highest first) and return top 5
+        return recommendations.sort((a, b) => b.savings - a.savings).slice(0, 5);
     };
 
     const renderStep1 = () => (
-        <div className="space-y-6 animate-fadeIn">
-            <div className="flex items-center gap-2 mb-6">
-                <div className="bg-yellow-100 p-2 rounded-full">
-                    <Zap className="w-6 h-6 text-yellow-600" />
+        <div className="space-y-8 animate-fade-in">
+            <div className="border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 p-3 rounded-xl shadow-sm">
+                        <Zap className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-bold text-gray-900">Home Energy Usage</h3>
+                        <p className="text-sm text-gray-500 mt-0.5">Tell us about your household electricity and fuel consumption</p>
+                    </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Step 1: Home Energy</h3>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -218,12 +284,17 @@ const Calculator = () => {
     );
 
     const renderStep2 = () => (
-        <div className="space-y-6 animate-fadeIn">
-            <div className="flex items-center gap-2 mb-6">
-                <div className="bg-blue-100 p-2 rounded-full">
-                    <Car className="w-6 h-6 text-blue-600" />
+        <div className="space-y-8 animate-fade-in">
+            <div className="border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-gradient-to-br from-blue-400 to-blue-500 p-3 rounded-xl shadow-sm">
+                        <Car className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-bold text-gray-900">Transport Habits</h3>
+                        <p className="text-sm text-gray-500 mt-0.5">How do you typically travel and what's your commute like?</p>
+                    </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Step 2: Transport</h3>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -274,12 +345,17 @@ const Calculator = () => {
     );
 
     const renderStep3 = () => (
-        <div className="space-y-6 animate-fadeIn">
-            <div className="flex items-center gap-2 mb-6">
-                <div className="bg-green-100 p-2 rounded-full">
-                    <Utensils className="w-6 h-6 text-green-600" />
+        <div className="space-y-8 animate-fade-in">
+            <div className="border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-gradient-to-br from-green-400 to-green-500 p-3 rounded-xl shadow-sm">
+                        <Utensils className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-bold text-gray-900">Diet & Lifestyle Choices</h3>
+                        <p className="text-sm text-gray-500 mt-0.5">Your daily habits and consumption patterns</p>
+                    </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Step 3: Diet & Lifestyle</h3>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -332,73 +408,210 @@ const Calculator = () => {
 
     const renderResults = () => {
         if (!result) return null;
+
+        // Calculate advanced analytics
+        const total = result.total;
+        const breakdown = result.breakdown;
+
+        // Percentage breakdown
+        const percentages = {
+            electricity: ((breakdown.electricity / total) * 100).toFixed(1),
+            transport: ((breakdown.transport / total) * 100).toFixed(1),
+            diet: ((breakdown.diet / total) * 100).toFixed(1),
+            lifestyle: ((breakdown.lifestyle / total) * 100).toFixed(1),
+        };
+
+        // Top contributors
+        const contributors = [
+            { name: 'Home Energy', value: breakdown.electricity, icon: Zap, color: 'yellow' },
+            { name: 'Transport', value: breakdown.transport, icon: Car, color: 'blue' },
+            { name: 'Diet', value: breakdown.diet, icon: Utensils, color: 'green' },
+            { name: 'Lifestyle', value: breakdown.lifestyle, icon: ShoppingBag, color: 'purple' },
+        ].sort((a, b) => b.value - a.value);
+
+        //Impact level
+        const impactLevel = getImpactLevel(total);
+        const impactInfo = IMPACT_LEVELS[impactLevel];
+
+        // Pie chart data
+        const pieData = {
+            labels: ['Home Energy', 'Transport', 'Diet', 'Lifestyle'],
+            datasets: [{
+                data: [breakdown.electricity, breakdown.transport, breakdown.diet, breakdown.lifestyle],
+                backgroundColor: ['#FCD34D', '#60A5FA', '#34D399', '#A78BFA'],
+                borderWidth: 2,
+                borderColor: '#fff',
+            }]
+        };
+
         return (
             <div className="space-y-8 animate-fadeIn">
+                {/* Header */}
                 <div className="text-center">
-                    <div className="inline-block bg-primary-100 p-4 rounded-full mb-4">
-                        <CheckCircle className="w-12 h-12 text-primary-600" />
+                    <div className="inline-block bg-gradient-to-br from-primary-500 to-primary-600 p-4 rounded-2xl mb-4 shadow-lg animate-bounce">
+                        <CheckCircle className="w-14 h-14 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900">Calculation Complete!</h3>
-                    <p className="text-gray-600 mt-2">Here is your estimated annual carbon footprint.</p>
+                    <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Calculation Complete!</h3>
+                    <p className="text-gray-600 mt-2 text-lg">Here's your personalized carbon footprint analysis</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-primary-50 to-white border border-primary-100 rounded-xl p-8 text-center shadow-sm">
-                    <p className="text-sm font-medium text-primary-600 uppercase tracking-wider">Total Annual Emissions</p>
-                    <div className="mt-2 flex items-baseline justify-center gap-2">
-                        <span className="text-5xl font-extrabold text-gray-900">{Math.round(result.total).toLocaleString()}</span>
-                        <span className="text-xl text-gray-500 font-medium">kg CO₂</span>
+                {/* Total Footprint with Impact Level */}
+                <div className="bg-gradient-to-br from-primary-50 via-white to-green-50 border-2 border-primary-200 rounded-2xl p-10 text-center shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-primary-100 rounded-full opacity-20 blur-3xl"></div>
+                    <p className="text-sm font-bold text-primary-700 uppercase tracking-widest mb-3">Total Annual Emissions</p>
+                    <div className="mt-2 flex items-baseline justify-center gap-3 relative z-10">
+                        <span className="text-6xl font-black text-gray-900 tracking-tight">{Math.round(total).toLocaleString()}</span>
+                        <span className="text-2xl text-gray-600 font-semibold">kg CO₂</span>
                     </div>
+
+                    {/* Impact Badge */}
+                    <div className={`mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold shadow-lg border-2 ${impactLevel === 'LOW' ? 'bg-green-100 text-green-800 border-green-300' :
+                            impactLevel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                'bg-red-100 text-red-800 border-red-300'
+                        }`}>
+                        <span className="text-2xl">{impactInfo.icon}</span>
+                        {impactInfo.label}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-3 italic">{impactInfo.message}</p>
+
                     {result.comparison && (
-                        <div className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${result.comparison.isIncrease ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${result.comparison.isIncrease ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                             {result.comparison.isIncrease ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                             {result.comparison.percentChange}% {result.comparison.isIncrease ? 'increase' : 'decrease'} from last time
                         </div>
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                            <Lightbulb className="w-5 h-5 text-yellow-500" />
-                            Recommendations
-                        </h4>
+                {/* Benchmarking */}
+                <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="bg-blue-500 p-2.5 rounded-xl">
+                            <Target className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-bold text-gray-900">How Do You Compare?</h4>
+                            <p className="text-sm text-gray-600">Benchmarking against averages and targets</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white p-5 rounded-xl border-2 border-transparent hover:border-blue-300 transition-all">
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Your Footprint</p>
+                            <p className="text-3xl font-black text-gray-900">{Math.round(total).toLocaleString()}</p>
+                            <p className="text-xs text-gray-500 mt-1">kg CO₂/year</p>
+                        </div>
+                        <div className="bg-white p-5 rounded-xl border-2 border-transparent hover:border-orange-300 transition-all">
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Indian Average</p>
+                            <p className="text-3xl font-black text-orange-600">{BENCHMARKS.INDIAN_AVERAGE.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {total > BENCHMARKS.INDIAN_AVERAGE ?
+                                    `${Math.round((total / BENCHMARKS.INDIAN_AVERAGE - 1) * 100)}% above avg` :
+                                    `${Math.round((1 - total / BENCHMARKS.INDIAN_AVERAGE) * 100)}% below avg`
+                                }
+                            </p>
+                        </div>
+                        <div className="bg-white p-5 rounded-xl border-2 border-transparent hover:border-green-300 transition-all">
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Sustainable Target</p>
+                            <p className="text-3xl font-black text-green-600">{BENCHMARKS.SUSTAINABLE_TARGET.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {total > BENCHMARKS.SUSTAINABLE_TARGET ?
+                                    `${Math.round(total - BENCHMARKS.SUSTAINABLE_TARGET)} kg to reach` :
+                                    '🎉 Target achieved!'
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Top Contributors & Pie Chart */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card>
+                        <div className="flex items-center gap-2 mb-6">
+                            <Award className="w-6 h-6 text-yellow-500" />
+                            <h4 className="text-lg font-bold text-gray-900">Top 3 Contributors</h4>
+                        </div>
                         <div className="space-y-3">
-                            {result.recommendations.map((rec, index) => (
-                                <div key={index} className="bg-white border border-gray-200 p-4 rounded-lg flex gap-3 shadow-sm">
-                                    <div className="bg-gray-50 p-2 rounded-lg h-fit">
-                                        <rec.icon className="w-5 h-5 text-gray-600" />
+                            {contributors.slice(0, 3).map((c, idx) => (
+                                <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <div className={`p-3 rounded-xl bg-${c.color}-100`}>
+                                        <c.icon className={`w-6 h-6 text-${c.color}-600`} />
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900 text-sm">{rec.category}</p>
-                                        <p className="text-sm text-gray-600 mt-1">{rec.text}</p>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-semibold text-gray-900">#{idx + 1} {c.name}</span>
+                                            <span className="text-sm font-bold text-gray-700">{Math.round(c.value)} kg</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div className={`bg-${c.color}-500 h-2.5 rounded-full`} style={{ width: `${(c.value / total) * 100}%` }}></div>
+                                        </div>
+                                        <span className="text-xs text-gray-500 mt-1">{((c.value / total) * 100).toFixed(1)}% of total</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Card>
 
-                    <div className="space-y-4">
-                        <h4 className="font-semibold text-gray-900">Breakdown</h4>
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 flex items-center gap-2"><Zap className="w-4 h-4" /> Home Energy</span>
-                                <span className="font-medium text-gray-900">{Math.round(result.breakdown.electricity)} kg</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 flex items-center gap-2"><Car className="w-4 h-4" /> Transport</span>
-                                <span className="font-medium text-gray-900">{Math.round(result.breakdown.transport)} kg</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 flex items-center gap-2"><Utensils className="w-4 h-4" /> Diet</span>
-                                <span className="font-medium text-gray-900">{Math.round(result.breakdown.diet)} kg</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 flex items-center gap-2"><ShoppingBag className="w-4 h-4" /> Lifestyle</span>
-                                <span className="font-medium text-gray-900">{Math.round(result.breakdown.lifestyle)} kg</span>
-                            </div>
+                    <Card>
+                        <h4 className="text-lg font-bold text-gray-900 mb-6">Emissions Breakdown</h4>
+                        <div className="h-64 flex items-center justify-center">
+                            <Pie data={pieData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
+                        </div>
+                    </Card>
+                </div>
+
+                {/* What-If Simulator */}
+                <WhatIfSimulator
+                    currentFootprint={result}
+                    currentFormData={formData}
+                    onRecalculate={() => { }}
+                />
+
+                {/* Enhanced Recommendations */}
+                <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="bg-yellow-500 p-2.5 rounded-xl">
+                            <Lightbulb className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-bold text-gray-900">Personalized Action Plan</h4>
+                            <p className="text-sm text-gray-600">Tailored recommendations based on your lifestyle</p>
                         </div>
                     </div>
-                </div>
+                    <div className="grid gap-4">
+                        {result.recommendations.map((rec, index) => (
+                            <div key={index} className="bg-white border-2 border-gray-200 p-5 rounded-xl flex gap-4 hover:border-yellow-300 hover:shadow-md transition-all">
+                                <div className="bg-gradient-to-br from-yellow-100 to-orange-100 p-3 rounded-xl h-fit">
+                                    <rec.icon className="w-6 h-6 text-yellow-700" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <p className="font-bold text-gray-900">{rec.category}</p>
+                                            <p className="text-sm text-gray-600 mt-1">{rec.text}</p>
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${rec.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                                                rec.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
+                                            }`}>
+                                            {rec.difficulty}
+                                        </span>
+                                    </div>
+                                    {rec.savings > 0 && (
+                                        <div className="flex items-center gap-2 mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                            <TrendingDown className="w-4 h-4 text-green-600" />
+                                            <span className="text-sm font-semibold text-green-700">
+                                                Potential savings: <span className="font-black">{rec.savings} kg CO₂/year</span>
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+
+                {/* Calculation Transparency */}
+                <CalculationExplainer />
             </div>
         );
     };
@@ -422,7 +635,7 @@ const Calculator = () => {
                 };
             }
 
-            const recommendations = generateRecommendations(calculation.breakdown);
+            const recommendations = generateRecommendations(calculation.breakdown, formData);
 
             const finalResult = {
                 ...calculation,
@@ -444,26 +657,48 @@ const Calculator = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fadeIn">
-            <div className="flex justify-between items-center mb-6">
-                <span className="text-sm font-medium text-gray-500">Step {currentStep} of 4</span>
-                <span className="text-sm font-medium text-primary-600">{Math.round((currentStep / 4) * 100)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+        <div className="max-w-3xl mx-auto space-y-8 animate-fade-in pb-12">
+            {/* Progress Indicator */}
+            <div className="relative">
+                <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-200 rounded-full -z-10 transform -translate-y-1/2"></div>
                 <div
-                    className="bg-primary-600 h-2.5 rounded-full transition-all duration-500 ease-in-out"
-                    style={{ width: `${(currentStep / 4) * 100}%` }}
+                    className="absolute top-1/2 left-0 h-1 bg-primary-500 rounded-full -z-10 transition-all duration-500 ease-in-out transform -translate-y-1/2"
+                    style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
                 ></div>
+                <div className="flex justify-between">
+                    {[1, 2, 3, 4].map((step) => (
+                        <div
+                            key={step}
+                            className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 ${step <= currentStep
+                                ? 'bg-primary-500 border-primary-500 text-white'
+                                : 'bg-white border-gray-300 text-gray-400'
+                                }`}
+                        >
+                            {step < currentStep ? <CheckCircle className="w-5 h-5" /> : step}
+                        </div>
+                    ))}
+                </div>
+                <div className="flex justify-between mt-2 text-xs font-medium text-gray-500 uppercase tracking-wide px-1">
+                    <span>Energy</span>
+                    <span className="translate-x-1">Transport</span>
+                    <span className="-translate-x-1">Lifestyle</span>
+                    <span>Result</span>
+                </div>
             </div>
 
-            <Card className="min-h-[400px] flex flex-col justify-center">
-                {currentStep === 1 && renderStep1()}
-                {currentStep === 2 && renderStep2()}
-                {currentStep === 3 && renderStep3()}
-                {currentStep === 4 && renderResults()}
+            <Card className="min-h-[450px] flex flex-col relative overflow-hidden">
+                {/* Decorative background element */}
+                <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-primary-50 rounded-full opacity-50 blur-3xl -z-10 pointer-events-none"></div>
+
+                <div className="flex-1">
+                    {currentStep === 1 && renderStep1()}
+                    {currentStep === 2 && renderStep2()}
+                    {currentStep === 3 && renderStep3()}
+                    {currentStep === 4 && renderResults()}
+                </div>
 
                 {currentStep < 4 && (
-                    <div className="mt-8 flex justify-between pt-6 border-t border-gray-100">
+                    <div className="mt-10 flex justify-between pt-6 border-t border-gray-100">
                         <Button
                             variant="ghost"
                             onClick={prevStep}
@@ -474,11 +709,11 @@ const Calculator = () => {
                         </Button>
 
                         {currentStep === 3 ? (
-                            <Button onClick={handleSubmit} disabled={loading}>
+                            <Button onClick={handleSubmit} disabled={loading} size="lg" className="w-40 shadow-lg shadow-primary-500/30">
                                 {loading ? 'Calculating...' : 'See Results'}
                             </Button>
                         ) : (
-                            <Button onClick={nextStep}>
+                            <Button onClick={nextStep} className="w-32">
                                 Next <ChevronRight className="w-4 h-4 ml-2" />
                             </Button>
                         )}

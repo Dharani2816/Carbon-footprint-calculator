@@ -14,7 +14,7 @@ import { Line, Pie } from 'react-chartjs-2';
 import { Card } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
 import { footprintApi } from '../api/footprintApi';
-import { Loader } from 'lucide-react';
+import { Loader, Leaf } from 'lucide-react';
 
 ChartJS.register(
     CategoryScale,
@@ -125,103 +125,107 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-8 animate-fadeIn">
-            <div className="md:flex md:items-center md:justify-between">
+        <div className="space-y-8 animate-fade-in pb-8">
+            <div className="md:flex md:items-end md:justify-between border-b border-gray-200 pb-6">
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-3xl font-bold leading-7 text-gray-900 sm:text-4xl sm:truncate tracking-tight">
-                        Welcome back, <span className="text-primary-600">{user?.name}</span>!
+                    <h2 className="text-3xl font-extrabold leading-7 text-gray-900 sm:text-4xl tracking-tight">
+                        Dashboard
                     </h2>
-                    <p className="mt-1 text-sm text-gray-500">Here's an overview of your carbon footprint impact.</p>
+                    <p className="mt-2 text-lg text-gray-500">
+                        Welcome back, <span className="font-semibold text-primary-600">{user?.name}</span>! Here's your impact overview.
+                    </p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <Card className="bg-gradient-to-br from-primary-500 to-primary-600 border-transparent text-white shadow-lg transform hover:scale-105 transition-transform duration-200">
+                <Card className="bg-gradient-to-br from-primary-600 to-primary-800 border-transparent text-white shadow-xl shadow-primary-900/10 transform hover:-translate-y-1 transition-transform duration-300">
                     <div className="flex justify-between items-start">
                         <div>
                             <div className="text-primary-100 font-medium text-sm uppercase tracking-wider">
                                 Latest Footprint
                             </div>
-                            <div className="mt-2 text-4xl font-extrabold text-white">
-                                {totalFootprint.toLocaleString()} <span className="text-xl font-normal text-primary-200">kg CO₂</span>
+                            <div className="mt-2 text-5xl font-extrabold text-white tracking-tight">
+                                {totalFootprint.toLocaleString()} <span className="text-2xl font-normal text-primary-200">kg</span>
                             </div>
                         </div>
-                        <div className="bg-white/20 p-2 rounded-lg">
-                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                        <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                            <Leaf className="w-8 h-8 text-white" />
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center text-sm text-primary-100">
-                        <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-semibold mr-2">
-                            {totalFootprint < 3000 ? 'Low Impact' : 'Needs Improvement'}
+                    <div className="mt-6 flex items-center text-sm text-primary-50 font-medium">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold mr-2 ${totalFootprint < 3000 ? 'bg-green-400/20 text-white' : 'bg-red-400/20 text-white'}`}>
+                            {totalFootprint < 3000 ? 'Low Impact' : 'Needs Action'}
                         </span>
-                        <span>{totalFootprint < 3000 ? 'Great job!' : 'Let\'s reduce it!'}</span>
+                        <span>{totalFootprint < 3000 ? '🌿 Great job keeping it low!' : '⚠ Lets reduce this.'}</span>
                     </div>
                 </Card>
 
-                <Card className="hover:shadow-md transition-shadow duration-200 border-l-4 border-l-blue-500">
+                <Card className="hover:shadow-md transition-all duration-300 group">
                     <div className="flex justify-between items-start">
                         <div>
-                            <div className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                            <div className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
                                 Total Records
                             </div>
-                            <div className="mt-2 text-3xl font-bold text-gray-900">
+                            <div className="mt-2 text-4xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
                                 {history.length}
                             </div>
                         </div>
-                        <div className="bg-blue-50 p-2 rounded-lg">
-                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <div className="bg-blue-50 p-2.5 rounded-xl group-hover:bg-blue-100 transition-colors">
+                            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                             </svg>
                         </div>
                     </div>
-                    <div className="mt-4 text-sm text-blue-600 flex items-center">
-                        <span>Track consistently</span>
+                    <div className="mt-6 text-sm text-gray-500">
+                        Consistently tracking your footprint helps you stay aware.
                     </div>
                 </Card>
 
-                <Card className="hover:shadow-md transition-shadow duration-200 border-l-4 border-l-green-500">
+                <Card className="hover:shadow-md transition-all duration-300 group">
                     <div className="flex justify-between items-start">
                         <div>
-                            <div className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                            <div className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
                                 Reduction Goal
                             </div>
-                            <div className="mt-2 text-3xl font-bold text-gray-900">
-                                -15%
+                            <div className="mt-2 text-4xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
+                                65%
                             </div>
                         </div>
-                        <div className="bg-green-50 p-2 rounded-lg">
-                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="bg-green-50 p-2.5 rounded-xl group-hover:bg-green-100 transition-colors">
+                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
                     </div>
-                    <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-green-500 h-2 rounded-full" style={{ width: '65%' }}></div>
+                    <div className="mt-4 w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                        <div className="bg-green-500 h-2.5 rounded-full animate-slide-up" style={{ width: '65%' }}></div>
                     </div>
-                    <div className="mt-1 text-xs text-gray-500 text-right">65% achieved</div>
+                    <div className="mt-2 text-xs font-semibold text-gray-500 text-right">Target reached</div>
                 </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card className="hover:shadow-lg transition-shadow duration-200">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-bold text-gray-900">Emission Sources</h3>
-                        <span className="text-sm text-gray-500">Average breakdown</span>
+                <Card className="hover:shadow-lg transition-shadow duration-300">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900">Emission Sources</h3>
+                            <p className="text-sm text-gray-500">Where your emissions come from</p>
+                        </div>
                     </div>
-                    <div className="h-72 flex justify-center">
-                        <Pie data={pieData} options={{ maintainAspectRatio: false }} />
+                    <div className="h-80 flex justify-center p-4">
+                        <Pie data={pieData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
                     </div>
                 </Card>
 
-                <Card className="hover:shadow-lg transition-shadow duration-200">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-bold text-gray-900">History Trend</h3>
-                        <span className="text-sm text-gray-500">Over time</span>
+                <Card className="hover:shadow-lg transition-shadow duration-300">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900">History Trend</h3>
+                            <p className="text-sm text-gray-500">Your carbon footprint over time</p>
+                        </div>
                     </div>
-                    <div className="h-72">
-                        <Line options={options} data={lineData} />
+                    <div className="h-80 p-4">
+                        <Line options={{ ...options, maintainAspectRatio: false }} data={lineData} />
                     </div>
                 </Card>
             </div>

@@ -1,30 +1,32 @@
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import PropTypes from 'prop-types';
+import React from 'react';
 
-export function Button({ className, variant = 'primary', size = 'md', ...props }) {
+export const Button = ({
+    children,
+    variant = 'primary',
+    className = '',
+    disabled = false,
+    type = 'button',
+    onClick,
+    ...props
+}) => {
+    const baseStyles = "inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed";
+
     const variants = {
-        primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
-        secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-primary-500',
-        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-        ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-500',
-    };
-
-    const sizes = {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-4 py-2 text-sm',
-        lg: 'px-6 py-3 text-base',
+        primary: "border-transparent text-white bg-primary-600 hover:bg-primary-700 focus:ring-primary-500 hover:shadow-md transform hover:-translate-y-0.5",
+        secondary: "border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-primary-500",
+        ghost: "border-transparent text-gray-600 hover:text-primary-600 hover:bg-primary-50 focus:ring-primary-500 shadow-none",
+        danger: "border-transparent text-white bg-red-600 hover:bg-red-700 focus:ring-red-500",
     };
 
     return (
         <button
-            className={twMerge(
-                'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
-                variants[variant],
-                sizes[size],
-                className
-            )}
+            type={type}
+            className={`${baseStyles} ${variants[variant]} ${className}`}
+            disabled={disabled}
+            onClick={onClick}
             {...props}
-        />
+        >
+            {children}
+        </button>
     );
 }

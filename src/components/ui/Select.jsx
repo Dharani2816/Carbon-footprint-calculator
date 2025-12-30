@@ -1,39 +1,44 @@
-import { forwardRef } from 'react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import PropTypes from 'prop-types';
+import React from 'react';
+import { ChevronDown } from 'lucide-react';
 
-export const Select = forwardRef(({ className, label, error, options, children, ...props }, ref) => {
+export const Select = ({
+    label,
+    name,
+    value,
+    onChange,
+    options,
+    children,
+    required = false,
+    className = '',
+    helperText,
+    ...props
+}) => {
     return (
-        <div className="w-full">
+        <div className={`w-full ${className}`}>
             {label && (
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {label}
+                <label htmlFor={name} className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {label} {required && <span className="text-red-500">*</span>}
                 </label>
             )}
-            <select
-                ref={ref}
-                className={twMerge(
-                    'block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm px-3 py-2 border bg-white',
-                    error && 'border-red-300 focus:border-red-500 focus:ring-red-500',
-                    className
-                )}
-                {...props}
-            >
-                {children}
-            </select>
-            {error && (
-                <p className="mt-1 text-sm text-red-600">{error}</p>
+            <div className="relative rounded-md shadow-sm">
+                <select
+                    name={name}
+                    id={name}
+                    className="block w-full pl-4 pr-10 py-2.5 rounded-lg border-gray-300 text-gray-900 focus:border-primary-500 focus:ring-primary-500 sm:text-sm appearance-none bg-white transition-colors duration-200 ease-in-out hover:border-gray-400"
+                    value={value}
+                    onChange={onChange}
+                    required={required}
+                    {...props}
+                >
+                    {children}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <ChevronDown className="h-4 w-4" />
+                </div>
+            </div>
+            {helperText && (
+                <p className="mt-1 text-xs text-gray-500">{helperText}</p>
             )}
         </div>
     );
-});
-
-Select.displayName = 'Select';
-
-Select.propTypes = {
-    className: PropTypes.string,
-    label: PropTypes.string,
-    error: PropTypes.string,
-    children: PropTypes.node,
 };

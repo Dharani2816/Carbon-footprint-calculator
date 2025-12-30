@@ -1,71 +1,46 @@
-// Mock Footprint Service
+import api from './axios';
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const mapToBackend = (data) => ({
+    electricity_emission: data.breakdown.electricity,
+    transport_emission: data.breakdown.transport,
+    diet_emission: data.breakdown.diet,
+    lifestyle_emission: data.breakdown.lifestyle,
+    total_emission: data.total
+});
 
-// Helper to get data from localStorage (simulating database)
-const getDb = () => {
-    const data = localStorage.getItem('mock_db_footprints');
-    return data ? JSON.parse(data) : [];
-};
-
-const saveDb = (data) => {
-    localStorage.setItem('mock_db_footprints', JSON.stringify(data));
-};
+const mapToFrontend = (data) => ({
+    id: data.id,
+    date: new Date(data.createdAt).toISOString().split('T')[0],
+    total: data.total_emission,
+    breakdown: {
+        electricity: data.electricity_emission,
+        transport: data.transport_emission,
+        diet: data.diet_emission,
+        lifestyle: data.lifestyle_emission
+    }
+});
 
 export const footprintApi = {
     saveFootprint: async (footprintData) => {
-        await delay(600);
-        
-        const newRecord = {
-            id: Date.now(),
-            date: new Date().toISOString().split('T')[0],
-            createdAt: new Date().toISOString(),
-            ...footprintData
-        };
-
-        const db = getDb();
-        db.push(newRecord);
-        saveDb(db);
-
-        return newRecord;
+        const payload = mapToBackend(footprintData);
+        const response = await api.post('/footprints', payload);
+        return mapToFrontend(response.data);
     },
 
     getHistory: async () => {
-        await delay(500);
-        const db = getDb();
-        
-        // If DB is empty, return some initial mock data for demo purposes
-        if (db.length === 0) {
-            const initialMockData = [
-                {
-                    id: 1,
-                    date: '2024-10-15',
-                    total: 4200,
-                    breakdown: { electricity: 1200, transport: 1500, diet: 1000, lifestyle: 500 }
-                },
-                {
-                    id: 2,
-                    date: '2024-11-20',
-                    total: 3800,
-                    breakdown: { electricity: 1100, transport: 1200, diet: 1000, lifestyle: 500 }
-                },
-                {
-                    id: 3,
-                    date: '2024-12-25',
-                    total: 4500,
-                    breakdown: { electricity: 1300, transport: 1600, diet: 1100, lifestyle: 500 }
-                }
-            ];
-            saveDb(initialMockData);
-            return initialMockData;
-        }
-
-        return db;
+        const response = await api.get('/footprints/history');
+        return response.data.map(mapToFrontend);
     },
 
     getLatestFootprint: async () => {
-        await delay(300);
-        const db = getDb();
-        return db.length > 0 ? db[db.length - 1] : null;
+        try {
+            const response = await api.get('/footprints/latest');
+            return mapToFrontend(response.data);
+        } catch (error) {
+            if (error.response && error.response.status === 404) {
+                return null;
+            }
+            throw error;
+        }
     }
 };
