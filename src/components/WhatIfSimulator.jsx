@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { Lightbulb, Zap, Car, Utensils, TrendingDown } from 'lucide-react';
 
-export const WhatIfSimulator = ({ currentFootprint, currentFormData, onRecalculate }) => {
+export const WhatIfSimulator = ({ currentFootprint, currentFormData }) => {
     const [simulations, setSimulations] = useState({
         electricityReduction: 0,
         travelReduction: 0,
@@ -10,13 +10,7 @@ export const WhatIfSimulator = ({ currentFootprint, currentFormData, onRecalcula
         acReduction: false,
     });
 
-    const [simulatedFootprint, setSimulatedFootprint] = useState(currentFootprint);
-
-    useEffect(() => {
-        calculateSimulation();
-    }, [simulations]);
-
-    const calculateSimulation = () => {
+    const simulatedFootprint = useMemo(() => {
         // Start with current footprint breakdown
         let newElectricity = currentFootprint.breakdown.electricity;
         let newTransport = currentFootprint.breakdown.transport;
@@ -47,7 +41,7 @@ export const WhatIfSimulator = ({ currentFootprint, currentFormData, onRecalcula
 
         const newTotal = newElectricity + newTransport + newDiet + currentFootprint.breakdown.lifestyle;
 
-        setSimulatedFootprint({
+        return {
             total: newTotal,
             breakdown: {
                 electricity: newElectricity,
@@ -55,8 +49,8 @@ export const WhatIfSimulator = ({ currentFootprint, currentFormData, onRecalcula
                 diet: newDiet,
                 lifestyle: currentFootprint.breakdown.lifestyle,
             }
-        });
-    };
+        };
+    }, [currentFootprint, simulations, currentFormData]);
 
     const savings = currentFootprint.total - simulatedFootprint.total;
     const savingsPercentage = ((savings / currentFootprint.total) * 100).toFixed(1);

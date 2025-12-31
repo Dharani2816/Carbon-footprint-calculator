@@ -162,7 +162,7 @@ const History = () => {
                             </div>
                         </Card>
                     ) : (
-                        history.slice().reverse().map((record, index) => (
+                        history.slice().reverse().map((record) => (
                             <Card key={record.id} className="flex flex-col md:flex-row justify-between items-center gap-6 hover:shadow-md transition-shadow duration-200 border-l-4 border-l-primary-500 group">
                                 <div className="flex items-center gap-6 w-full md:w-auto">
                                     <div className="bg-primary-50 p-4 rounded-full group-hover:bg-primary-100 transition-colors">

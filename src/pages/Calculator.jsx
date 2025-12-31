@@ -7,13 +7,17 @@ import { Zap, Car, Utensils, ShoppingBag, ChevronRight, ChevronLeft, CheckCircle
 import { footprintApi } from '../api/footprintApi';
 import { WhatIfSimulator } from '../components/WhatIfSimulator';
 import { CalculationExplainer } from '../components/CalculationExplainer';
-import { BENCHMARKS, getImpactLevel, IMPACT_LEVELS } from '../constants/benchmarks';
+import { BENCHMARKS, getImpactLevel, IMPACT_LEVELS, SAVINGS_ESTIMATES } from '../constants/benchmarks';
 import { Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Calculator = () => {
     // const { history, addToHistory } = useAuth(); // Removed as per refactor
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
         // Step 1: Home Energy
         electricity: '',
@@ -118,15 +122,6 @@ const Calculator = () => {
 
     const generateRecommendations = (breakdown, formData) => {
         const recommendations = [];
-        const { SAVINGS_ESTIMATES } = require('../constants/benchmarks');
-
-        // Sort categories by contribution
-        const categories = [
-            { name: 'electricity', value: breakdown.electricity },
-            { name: 'transport', value: breakdown.transport },
-            { name: 'diet', value: breakdown.diet },
-            { name: 'lifestyle', value: breakdown.lifestyle },
-        ].sort((a, b) => b.value - a.value);
 
         // Energy recommendations
         if (breakdown.electricity > 800) {
@@ -413,14 +408,6 @@ const Calculator = () => {
         const total = result.total;
         const breakdown = result.breakdown;
 
-        // Percentage breakdown
-        const percentages = {
-            electricity: ((breakdown.electricity / total) * 100).toFixed(1),
-            transport: ((breakdown.transport / total) * 100).toFixed(1),
-            diet: ((breakdown.diet / total) * 100).toFixed(1),
-            lifestyle: ((breakdown.lifestyle / total) * 100).toFixed(1),
-        };
-
         // Top contributors
         const contributors = [
             { name: 'Home Energy', value: breakdown.electricity, icon: Zap, color: 'yellow' },
@@ -466,8 +453,8 @@ const Calculator = () => {
 
                     {/* Impact Badge */}
                     <div className={`mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold shadow-lg border-2 ${impactLevel === 'LOW' ? 'bg-green-100 text-green-800 border-green-300' :
-                            impactLevel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                                'bg-red-100 text-red-800 border-red-300'
+                        impactLevel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                            'bg-red-100 text-red-800 border-red-300'
                         }`}>
                         <span className="text-2xl">{impactInfo.icon}</span>
                         {impactInfo.label}
@@ -590,8 +577,8 @@ const Calculator = () => {
                                             <p className="text-sm text-gray-600 mt-1">{rec.text}</p>
                                         </div>
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${rec.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
-                                                rec.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-red-100 text-red-700'
+                                            rec.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
                                             }`}>
                                             {rec.difficulty}
                                         </span>
@@ -618,11 +605,17 @@ const Calculator = () => {
 
     const handleSubmit = async () => {
         setLoading(true);
+        setError(null);
         try {
             const calculation = calculateFootprint(formData);
 
-            // Fetch latest history for comparison
-            const latestRecord = await footprintApi.getLatestFootprint();
+            // Fetch latest history for comparison - handle failure gracefully
+            let latestRecord = null;
+            try {
+                latestRecord = await footprintApi.getLatestFootprint();
+            } catch (err) {
+                console.warn('Could not fetch latest history for comparison', err);
+            }
 
             let comparison = null;
             if (latestRecord) {
@@ -643,14 +636,24 @@ const Calculator = () => {
                 recommendations
             };
 
-            // Save to API
-            await footprintApi.saveFootprint(finalResult);
+            // Save to API - handle failure gracefully so user still sees calculation
+            try {
+                await footprintApi.saveFootprint(finalResult);
+            } catch (err) {
+                console.error('Failed to save calculation to server', err);
+                // Optionally set a non-blocking error message
+                // setError('Calculated successfully, but failed to save to history.');
+            }
 
             setResult(finalResult);
             nextStep(); // Move to result step (Step 4)
-            await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
             console.error('Calculation failed', error);
+            if (error.response && error.response.status === 401) {
+                setError('Session expired. Please login again.');
+            } else {
+                setError(error.message || 'An unexpected error occurred. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -698,25 +701,32 @@ const Calculator = () => {
                 </div>
 
                 {currentStep < 4 && (
-                    <div className="mt-10 flex justify-between pt-6 border-t border-gray-100">
-                        <Button
-                            variant="ghost"
-                            onClick={prevStep}
-                            disabled={currentStep === 1}
-                            className={currentStep === 1 ? 'invisible' : ''}
-                        >
-                            <ChevronLeft className="w-4 h-4 mr-2" /> Back
-                        </Button>
-
-                        {currentStep === 3 ? (
-                            <Button onClick={handleSubmit} disabled={loading} size="lg" className="w-40 shadow-lg shadow-primary-500/30">
-                                {loading ? 'Calculating...' : 'See Results'}
-                            </Button>
-                        ) : (
-                            <Button onClick={nextStep} className="w-32">
-                                Next <ChevronRight className="w-4 h-4 ml-2" />
-                            </Button>
+                    <div className="mt-10 flex flex-col gap-4 pt-6 border-t border-gray-100">
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm flex items-center justify-center">
+                                {error}
+                            </div>
                         )}
+                        <div className="flex justify-between">
+                            <Button
+                                variant="ghost"
+                                onClick={prevStep}
+                                disabled={currentStep === 1}
+                                className={currentStep === 1 ? 'invisible' : ''}
+                            >
+                                <ChevronLeft className="w-4 h-4 mr-2" /> Back
+                            </Button>
+
+                            {currentStep === 3 ? (
+                                <Button onClick={handleSubmit} disabled={loading} size="lg" className="w-40 shadow-lg shadow-primary-500/30">
+                                    {loading ? 'Calculating...' : 'See Results'}
+                                </Button>
+                            ) : (
+                                <Button onClick={nextStep} className="w-32">
+                                    Next <ChevronRight className="w-4 h-4 ml-2" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 )}
             </Card>

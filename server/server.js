@@ -16,6 +16,10 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/footprints', footprintRoutes);
 
+app.get('/', (req, res) => {
+    res.send('Carbon Footprint API is running. Please use the frontend application to access the calculator.');
+});
+
 // Database Sync and Server Start
 syncDatabase().then(() => {
     app.listen(PORT, () => {
