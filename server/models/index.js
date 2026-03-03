@@ -1,101 +1,99 @@
-const { db } = require('../config/firebase');
+const mongoose = require('mongoose');
+const { connectMongo } = require('../config/mongo');
 
-const convertDoc = (doc) => {
-  if (!doc.exists) return null;
-  const data = doc.data();
-  // Convert Firestore Timestamps to JS Dates
-  Object.keys(data).forEach(key => {
-    if (data[key] && typeof data[key].toDate === 'function') {
-      data[key] = data[key].toDate();
-    }
-  });
-  return { id: doc.id, ...data };
+const baseTransform = (doc, ret) => {
+  ret.id = ret._id.toString();
+  delete ret._id;
+  delete ret.__v;
+  return ret;
 };
+
+const toPlain = (doc) => {
+  if (!doc) return null;
+  if (doc.toObject) return doc.toObject();
+  const { _id, __v, ...rest } = doc;
+  return { id: _id?.toString(), ...rest };
+};
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, index: true },
+  password: { type: String, required: true }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true, transform: baseTransform },
+  toObject: { virtuals: true, transform: baseTransform }
+});
+
+const footprintSchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  electricity_emission: { type: Number, default: 0 },
+  transport_emission: { type: Number, default: 0 },
+  diet_emission: { type: Number, default: 0 },
+  lifestyle_emission: { type: Number, default: 0 },
+  total_emission: { type: Number, default: 0 }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true, transform: baseTransform },
+  toObject: { virtuals: true, transform: baseTransform }
+});
+
+const insightSchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  cacheKey: { type: String, required: true, index: true },
+  payload: { type: mongoose.Schema.Types.Mixed, required: true },
+  meta: { type: mongoose.Schema.Types.Mixed }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true, transform: baseTransform },
+  toObject: { virtuals: true, transform: baseTransform }
+});
+
+const UserModel = mongoose.model('User', userSchema);
+const FootprintModel = mongoose.model('CarbonFootprint', footprintSchema);
+const InsightModel = mongoose.model('AiInsight', insightSchema);
 
 const User = {
   findOne: async ({ where }) => {
-    const { email, id } = where;
-    let query = db.collection('users');
-    
-    if (email) {
-      query = query.where('email', '==', email);
-    } else if (id) {
-      const doc = await db.collection('users').doc(id).get();
-      return convertDoc(doc);
-    }
-
-    const snapshot = await query.get();
-    if (snapshot.empty) return null;
-    
-    return convertDoc(snapshot.docs[0]);
+    const { email, id } = where || {};
+    if (email) return toPlain(await UserModel.findOne({ email }));
+    if (id) return toPlain(await UserModel.findById(id));
+    return null;
   },
-
   create: async (data) => {
-    const docRef = await db.collection('users').add({
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    const doc = await docRef.get();
-    return convertDoc(doc);
+    const doc = await UserModel.create(data);
+    return toPlain(doc);
   }
 };
 
 const CarbonFootprint = {
   create: async (data) => {
-    console.log('📝 [Model] Saving footprint for user:', data.user_id);
-    const docRef = await db.collection('carbon_footprints').add({
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    const doc = await docRef.get();
-    return convertDoc(doc);
+    const doc = await FootprintModel.create(data);
+    return doc.toObject();
   },
-
   findAll: async ({ where, order }) => {
-    const { user_id } = where;
-    let query = db.collection('carbon_footprints').where('user_id', '==', user_id);
-    
-    // FETCH ALL then SORT IN MEMORY (Avoids Firestore Index Issues)
-    const snapshot = await query.get();
-    const docs = snapshot.docs.map(doc => convertDoc(doc));
-    console.log(`📊 [Model] Found ${docs.length} records for user: ${user_id}`);
-
-    if (order && order[0][0] === 'createdAt' && order[0][1] === 'DESC') {
-      docs.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
-        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
-        return dateB - dateA; // Descending
-      });
-    }
-
-    return docs;
+    const { user_id } = where || {};
+    const sort = order && order[0][0] === 'createdAt' && order[0][1] === 'DESC' ? { createdAt: -1 } : {};
+    const docs = await FootprintModel.find({ user_id }).sort(sort);
+    return docs.map(toPlain);
   },
-
   findOne: async ({ where, order }) => {
-    const { user_id } = where;
-    let query = db.collection('carbon_footprints').where('user_id', '==', user_id);
-    
-    // FETCH ALL then SORT IN MEMORY
-    const snapshot = await query.get();
-    const docs = snapshot.docs.map(doc => convertDoc(doc));
-    
-    if (order && order[0][0] === 'createdAt' && order[0][1] === 'DESC') {
-      docs.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
-        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
-        return dateB - dateA; // Descending
-      });
-    }
+    const { user_id } = where || {};
+    const sort = order && order[0][0] === 'createdAt' && order[0][1] === 'DESC' ? { createdAt: -1 } : {};
+    return toPlain(await FootprintModel.findOne({ user_id }).sort(sort));
+  }
+};
 
-    return docs.length > 0 ? docs[0] : null;
+const AiInsight = {
+  findByCacheKey: async (cacheKey) => toPlain(await InsightModel.findOne({ cacheKey })),
+  create: async (data) => {
+    const doc = await InsightModel.create(data);
+    return toPlain(doc);
   }
 };
 
 const syncDatabase = async () => {
-    console.log('🔥 Firebase Database Ready');
-    return Promise.resolve();
+  await connectMongo();
 };
 
-module.exports = { User, CarbonFootprint, syncDatabase };
+module.exports = { User, CarbonFootprint, AiInsight, syncDatabase };

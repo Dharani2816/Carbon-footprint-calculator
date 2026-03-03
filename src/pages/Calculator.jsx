@@ -5,8 +5,10 @@ import { Select } from '../components/ui/Select';
 import { Card } from '../components/ui/Card';
 import { Zap, Car, Utensils, ShoppingBag, ChevronRight, ChevronLeft, CheckCircle, TrendingUp, TrendingDown, Lightbulb, Target, Award } from 'lucide-react';
 import { footprintApi } from '../api/footprintApi';
+import { aiApi } from '../api/aiApi';
 import { WhatIfSimulator } from '../components/WhatIfSimulator';
 import { CalculationExplainer } from '../components/CalculationExplainer';
+import { AiInsights } from '../components/AiInsights';
 import { BENCHMARKS, getImpactLevel, IMPACT_LEVELS, SAVINGS_ESTIMATES } from '../constants/benchmarks';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -38,6 +40,9 @@ const Calculator = () => {
         wasteSegregation: 'Sometimes',
     });
     const [result, setResult] = useState(null);
+    const [aiInsights, setAiInsights] = useState(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState(null);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -217,6 +222,27 @@ const Calculator = () => {
 
         // Sort by savings (highest first) and return top 5
         return recommendations.sort((a, b) => b.savings - a.savings).slice(0, 5);
+    };
+
+    const fetchAiInsights = async (calculation) => {
+        if (!calculation) return;
+        setAiLoading(true);
+        setAiError(null);
+        try {
+            const insights = await aiApi.getInsights({
+                energy: calculation.breakdown.electricity,
+                transport: calculation.breakdown.transport,
+                diet: calculation.breakdown.diet,
+                total: calculation.total
+            });
+            setAiInsights(insights);
+        } catch (err) {
+            console.error('Failed to fetch AI insights', err);
+            const message = err.response?.data?.message || 'Unable to generate AI insights. Please try again.';
+            setAiError(message);
+        } finally {
+            setAiLoading(false);
+        }
     };
 
     const renderStep1 = () => (
@@ -546,6 +572,13 @@ const Calculator = () => {
                     </Card>
                 </div>
 
+                <AiInsights
+                    data={aiInsights}
+                    loading={aiLoading}
+                    error={aiError}
+                    onRetry={() => fetchAiInsights(result)}
+                />
+
                 {/* What-If Simulator */}
                 <WhatIfSimulator
                     currentFootprint={result}
@@ -606,6 +639,9 @@ const Calculator = () => {
     const handleSubmit = async () => {
         setLoading(true);
         setError(null);
+        setAiInsights(null);
+        setAiError(null);
+        setAiLoading(true);
         try {
             const calculation = calculateFootprint(formData);
 
@@ -636,6 +672,8 @@ const Calculator = () => {
                 recommendations
             };
 
+            fetchAiInsights(calculation);
+
             // Save to API - handle failure gracefully so user still sees calculation
             try {
                 await footprintApi.saveFootprint(finalResult);
@@ -649,6 +687,7 @@ const Calculator = () => {
             nextStep(); // Move to result step (Step 4)
         } catch (error) {
             console.error('Calculation failed', error);
+            setAiLoading(false);
             if (error.response && error.response.status === 401) {
                 setError('Session expired. Please login again.');
             } else {

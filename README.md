@@ -47,6 +47,13 @@ Follow these steps to get the project running on your local machine.
    FIREBASE_CLIENT_EMAIL=your-client-email@project-id.iam.gserviceaccount.com
    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
    JWT_SECRET=any_random_secure_string
+   OPENAI_API_KEY=your-openai-api-key
+   OPENAI_MODEL=gpt-4o-mini # optional override
+   # Gemini is optional; leave blank if you only want OpenAI
+   GEMINI_API_KEY=
+   GEMINI_MODEL=
+   MONGO_URI=mongodb+srv://<user>:<pass>@<host>/?retryWrites=true&w=majority
+   MONGO_DB=carbonapp
    ```
    *Note: Ensure the private key is enclosed in quotes and includes the `\n` characters as one line.*
 
@@ -55,6 +62,15 @@ Follow these steps to get the project running on your local machine.
    node server.js
    ```
    *You should see "Firebase initialized" and "Server is running on port 5000".*
+
+### AI Insights API
+- Endpoint: `POST /api/ai/insights`
+- Auth: Bearer JWT (same as other protected routes)
+- Body:
+   ```json
+   { "energy": number, "transport": number, "diet": number, "total": number }
+   ```
+- Returns structured JSON with highest category, reasoning, risk level, 5 tips, 30-day plan, estimated reduction %, and motivational note. Responses are cached per user + input and stored in Firestore.
 
 ### 3. Frontend Configuration
 1. Open a **new terminal** and stay in the root project folder:
