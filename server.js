@@ -60,4 +60,7 @@ syncDatabase().then(() => {
         console.log(`Server is running on port ${PORT}`);
         listRoutes();
     });
+}).catch((err) => {
+    console.error('❌ Failed to start server:', err.message || err);
+    process.exit(1);
 });
